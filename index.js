@@ -9,14 +9,42 @@
 
 const AWS = require('aws-sdk');
 
-const current_time = new Date(); 
-const year = current_time.getFullYear();
-const month = current_time.getMonth()+1;
-const week = current_time.getDay();
-const day = current_time.getDate();
-const weekday = new Array("日","月","火","水","木","金","土");
-const format =
-`${month}/${day}(${weekday[week]})
+exports.handler = async (event) => {
+/*    console.log('Received event:', JSON.stringify(event, null, 2));*/
+
+  const eventBody = JSON.parse(event.body);
+/*    console.log("eventBody:", eventBody);*/
+
+    // handle challenge
+  const challenge = eventBody.challenge;
+  if (challenge) {
+    const body = {
+      challenge: challenge
+    };
+    const response = {
+      statusCode: 200,
+      body: JSON.stringify(body)
+    };
+    return response;
+  }
+
+  const text = eventBody.event.text;
+  const user = eventBody.event.user;
+  const channel = eventBody.event.channel;
+  const ts = eventBody.event.ts;
+
+  // イベント発生の時間を処理する
+  const eventDateTime = new Date(ts * 1000);
+  // JSTにする
+  eventDateTime.setHours(eventDateTime.getHours() + 9);
+  
+  const year = eventDateTime.getFullYear();
+  const month = eventDateTime.getMonth()+1;
+  const week = eventDateTime.getDay();
+  const day = eventDateTime.getDate();
+  const weekday = new Array("日","月","火","水","木","金","土");
+  const format =
+  `${month}/${day}(${weekday[week]})
 *今日やったこと*
 -  
 -  
@@ -29,30 +57,6 @@ const format =
 -  
 `
 
-exports.handler = async (event) => {
-/*    console.log('Received event:', JSON.stringify(event, null, 2));*/
-
-    const eventBody = JSON.parse(event.body);
-/*    console.log("eventBody:", eventBody);*/
-
-    // handle challenge
-    const challenge = eventBody.challenge;
-    if (challenge) {
-      const body = {
-        challenge: challenge
-      };
-      const response = {
-        statusCode: 200,
-        body: JSON.stringify(body)
-      };
-      return response;
-    }
-
-    const text = eventBody.event.text;
-    const user = eventBody.event.user;
-    const channel = eventBody.event.channel;
-    const botProfile = eventBody.event.bot_profile;
-    const ts = eventBody.event.ts;
 
 /*    console.log("text:", text);
     console.log("user:", user);
@@ -60,46 +64,38 @@ exports.handler = async (event) => {
     console.log("botProfile:", botProfile);*/
     console.log("ts:", ts);
 
-    const isDoneTask = text.includes(process.env["MENTIONED_APP_USER_ID"]) && text.includes(":done:");
+  const isDoneTask = text.includes(process.env["MENTIONED_APP_USER_ID"]) && text.includes(":done:");
 
-    if (isDoneTask) {
-      /*AWS.config.update({region: 'ap-northeast-1'});*/
-      // Create DynamoDB document client
-      let ddb = new AWS.DynamoDB({apiVersion: '2012-08-10'});
+  if (isDoneTask) {
+    /*AWS.config.update({region: 'ap-northeast-1'});*/
+    // Create DynamoDB document client
+    let ddb = new AWS.DynamoDB({apiVersion: '2012-08-10'});
 
-      const task = text.replace("<@U04241MH3FG>", "").replace(":done:", "").trim();
-      const dateTime = new Date(ts * 1000);
-      const date = dateTime.toLocaleDateString({ timeZone: 'Asia/Tokyo' });
-/*      const time = dateTime.toLocaleTimeString({ timeZone: 'Asia/Tokyo' });*/
+    const task = text.replace("<@U04241MH3FG>", "").replace(":done:", "").trim();
 
-      console.log("task: ", task);
-      console.log("dateTime: ", dateTime);
-      console.log(date);
- /*     console.log(time);*/
-      
-      let params = {
-        TableName: 'furikaeru_done_tasks',
-        Item: {
-          'user': { S: user },
-          'unixtime': { N: ts },
-          'date': { S: date },
-        /*  'time': { S: time },*/
-          'task': { S: task }
-        }
-      };
+    console.log("task: ", task);
+    console.log("eventDateTime: ", eventDateTime);
+    
+    let params = {
+      TableName: 'furikaeru_done_tasks',
+      Item: {
+        'user':     { S: user },
+        'unixtime': { N: ts },
+        'date':     { S: `${year}/${month}/${day}` },
+        'task':     { S: task }
+      }
+    };
 
-      console.log('params: ', params);
-
-      await ddb.putItem(params, function(err, data) {
-        if (err) {
-          console.log("Error", err);
-        } else {
-          console.log("Success", data);
-        }
-      }).promise();
-      
-      return;
-    }
+    await ddb.putItem(params, function(err, data) {
+      if (err) {
+        console.log("Error", err);
+      } else {
+        console.log("Success", data);
+      }
+    }).promise();
+    
+    return;
+  }
 
   // メンションされたらフォーマットをスレッドで投げる
   if (text === process.env["MENTIONED_APP_USER_ID"]) {
