@@ -54,28 +54,33 @@ exports.handler = async (event) => {
     const format = furikaeruFormat(month, day, week);
     let ddb = new AWS.DynamoDB();
     
-/*    let params = {
+    let params = {
       ExpressionAttributeValues: {
-        ':s': {N: '2'},
-        ':e' : {N: '09'},
-        ':topic' : {S: 'PHRASE'}
+        ':u': { S: 'U01JA0X1JQ1' },
+        ':t': { N: '0' },
+        ':date': { S: '2022/9/18' }
       },
-      KeyConditionExpression: 'Season = :s and Episode > :e',
-      ProjectionExpression: 'Episode, Title, Subtitle',
-      FilterExpression: 'contains (Subtitle, :topic)',
-      TableName: 'EPISODES_TABLE'
+      ExpressionAttributeNames: {"#u":"user", "#d":"date"}, // user is reserved in Dynamo
+      KeyConditionExpression: "#u = :u and unixtime > :t",
+      ProjectionExpression: 'task',
+      FilterExpression: 'contains (#d, :date)',
+      TableName: 'furikaeru_done_tasks'
     };
     
-    ddb.query(params, function(err, data) {
+    await ddb.query(params, function(err, data) {
       if (err) {
         console.log("Error", err);
       } else {
-        //console.log("Success", data.Items);
+        console.log("Success! data.Items: ", data.Items);
         data.Items.forEach(function(element, index, array) {
-          console.log(element.Title.S + " (" + element.Subtitle.S + ")");
+          console.log("element: ", element);
+          console.log("index: ", index);
+          console.log("array: ", array);
         });
       }
-    });*/
+    }).promise();
+    
+    console.log("passed query");
 
     await postMessage(format, channel, ts);
   }
@@ -169,11 +174,11 @@ async function postMessage(text, channel, ts) {
 
 // Httpリクエストを送信する。
 async function sendHttpRequest(url, method, headers, bodyData) {
-  console.log('sendHttpRequest');
+/*  console.log('sendHttpRequest');
   console.log('url:' + url);
   console.log('method:' + method);
   console.log('headers:' + JSON.stringify(headers));
-  console.log('body:' + bodyData);
+  console.log('body:' + bodyData);*/
   const https = require('https');
   const options = {
     method: method,
@@ -181,20 +186,20 @@ async function sendHttpRequest(url, method, headers, bodyData) {
   };
   return new Promise((resolve, reject) => {
     let req = https.request(url, options, (res) => {
-      console.log('responseStatusCode:' + res.statusCode);
-      console.log('responseHeaders:' + JSON.stringify(res.headers));
+/*      console.log('responseStatusCode:' + res.statusCode);
+      console.log('responseHeaders:' + JSON.stringify(res.headers));*/
       res.setEncoding('utf8');
       let body = '';
       res.on('data', (chunk) => {
         body += chunk;
-        console.log('responseBody:' + chunk);
+/*        console.log('responseBody:' + chunk);*/
       });
       res.on('end', () => {
-        console.log('No more data in response.');
+/*        console.log('No more data in response.');*/
         resolve(body);
       });
     }).on('error', (e) => {
-      console.log('problem with request:' + e.message);
+/*      console.log('problem with request:' + e.message);*/
       reject(e);
     });
     req.write(bodyData);
