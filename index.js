@@ -51,7 +51,6 @@ exports.handler = async (event) => {
 
   // メンションされたらフォーマットをスレッドで投げる
   if (text === process.env["MENTIONED_APP_USER_ID"]) {
-    const format = furikaeruFormat(month, day, week);
     let ddb = new AWS.DynamoDB();
     
     let params = {
@@ -67,20 +66,18 @@ exports.handler = async (event) => {
       TableName: 'furikaeru_done_tasks'
     };
     
+    let dataItems;
+    
     await ddb.query(params, function(err, data) {
       if (err) {
         console.log("Error", err);
       } else {
         console.log("Success! data.Items: ", data.Items);
-        data.Items.forEach(function(element, index, array) {
-          console.log("element: ", element);
-          console.log("index: ", index);
-          console.log("array: ", array);
-        });
+        dataItems = data.Items;
       }
     }).promise();
-    
-    console.log("passed query");
+
+    const format = furikaeruFormat(dataItems, month, day, week);
 
     await postMessage(format, channel, ts);
   }
@@ -110,9 +107,16 @@ const handleChallenge = (challenge) => {
 /*----------------------------------------------------------------------*/
 /*methods*/
 
-const furikaeruFormat = (month, day, week) => {
+const furikaeruFormat = (dataItems, month, day, week) => {
   const weekday = new Array("日","月","火","水","木","金","土");
-  const format = 
+  
+  console.log("dataItems: ", dataItems);
+  console.log("dataItems is Array?: ", dataItems.isArray);
+
+  let format;
+  
+  if (dataItems.length === 0) {
+  format = 
 `${month}/${day}(${weekday[week]})
 *今日やったこと*
 -  
@@ -125,6 +129,27 @@ const furikaeruFormat = (month, day, week) => {
 *自由記入（ハマったこと、学んだことなど）*
 -  
 `
+  } else {
+    let doneTaskList = "";
+    dataItems.forEach((element) => {
+      doneTaskList += `- ${element.task.S}\n`;
+    })
+    
+    format = 
+`${month}/${day}(${weekday[week]})
+*今日やったこと*
+${doneTaskList}
+
+*明日やること*
+-  
+-  
+
+*自由記入（ハマったこと、学んだことなど）*
+-  
+`
+  }
+  
+
   return format;
 }
 
