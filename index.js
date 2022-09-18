@@ -9,19 +9,6 @@
 
 const AWS = require('aws-sdk');
 
-// handle challenge
-const handleChallenge = (challenge) => {
-  if (challenge) {
-    const body = { challenge: challenge };
-    const response = {
-      statusCode: 200,
-      body: JSON.stringify(body)
-    };
-  
-    return response;
-  }
-}
-
 exports.handler = async (event) => {
 /*    console.log('Received event:', JSON.stringify(event, null, 2));*/
 
@@ -45,8 +32,22 @@ exports.handler = async (event) => {
   const week = eventDateTime.getDay();
   const day = eventDateTime.getDate();
   const weekday = new Array("日","月","火","水","木","金","土");
-  const format =
-  `${month}/${day}(${weekday[week]})
+
+/*    console.log("text:", text);
+    console.log("user:", user);
+    console.log("channel:", channel);
+    console.log("botProfile:", botProfile);*/
+    console.log("ts:", ts);
+
+  const isDoneTask = text.includes(process.env["MENTIONED_APP_USER_ID"]) && text.includes(":done:");
+
+  if (isDoneTask) {
+    await inputDoneTaskInDynamoDB(text, user, ts, year, month, day);
+  }
+
+  // メンションされたらフォーマットをスレッドで投げる
+  if (text === process.env["MENTIONED_APP_USER_ID"]) {
+    const format = `${month}/${day}(${weekday[week]})
 *今日やったこと*
 -  
 -  
@@ -58,47 +59,32 @@ exports.handler = async (event) => {
 *自由記入（ハマったこと、学んだことなど）*
 -  
 `
-
-/*    console.log("text:", text);
-    console.log("user:", user);
-    console.log("channel:", channel);
-    console.log("botProfile:", botProfile);*/
-    console.log("ts:", ts);
-
-  const isDoneTask = text.includes(process.env["MENTIONED_APP_USER_ID"]) && text.includes(":done:");
-
-  if (isDoneTask) {
-    let ddb = new AWS.DynamoDB({apiVersion: '2012-08-10'});
-
-    const task = text.replace("<@U04241MH3FG>", "").replace(":done:", "").trim();
-
-    console.log("task: ", task);
-    console.log("eventDateTime: ", eventDateTime);
+    let ddb = new AWS.DynamoDB();
     
     let params = {
-      TableName: 'furikaeru_done_tasks',
-      Item: {
-        'user':     { S: user },
-        'unixtime': { N: ts },
-        'date':     { S: `${year}/${month}/${day}` },
-        'task':     { S: task }
-      }
+      ExpressionAttributeValues: {
+        ':s': {N: '2'},
+        ':e' : {N: '09'},
+        ':topic' : {S: 'PHRASE'}
+      },
+      KeyConditionExpression: 'Season = :s and Episode > :e',
+      ProjectionExpression: 'Episode, Title, Subtitle',
+      FilterExpression: 'contains (Subtitle, :topic)',
+      TableName: 'EPISODES_TABLE'
     };
-
-    await ddb.putItem(params, function(err, data) {
+    
+    ddb.query(params, function(err, data) {
       if (err) {
         console.log("Error", err);
       } else {
-        console.log("Success", data);
+        //console.log("Success", data.Items);
+        data.Items.forEach(function(element, index, array) {
+          console.log(element.Title.S + " (" + element.Subtitle.S + ")");
+        });
       }
-    }).promise();
-    
-    return;
-  }
+    });
 
-  // メンションされたらフォーマットをスレッドで投げる
-  if (text === process.env["MENTIONED_APP_USER_ID"]) {
-      await postMessage(format, channel, ts);
+    await postMessage(format, channel, ts);
   }
 
   // 200を返す。
@@ -108,6 +94,49 @@ exports.handler = async (event) => {
   };
   return response;
 };
+
+
+// handle challenge
+const handleChallenge = (challenge) => {
+  if (challenge) {
+    const body = { challenge: challenge };
+    const response = {
+      statusCode: 200,
+      body: JSON.stringify(body)
+    };
+  
+    return response;
+  }
+}
+
+// DynamoDBに完了タスクを書き込む
+async function inputDoneTaskInDynamoDB(text, user, ts, year, month, day) {
+  let ddb = new AWS.DynamoDB({apiVersion: '2012-08-10'});
+
+  const task = text.replace("<@U04241MH3FG>", "").replace(":done:", "").trim();
+
+  console.log("task: ", task);
+  
+  let params = {
+    TableName: 'furikaeru_done_tasks',
+    Item: {
+      'user':     { S: user },
+      'unixtime': { N: ts },
+      'date':     { S: `${year}/${month}/${day}` },
+      'task':     { S: task }
+    }
+  };
+
+  await ddb.putItem(params, function(err, data) {
+    if (err) {
+      console.log("Error", err);
+    } else {
+      console.log("Success", data);
+    }
+  }).promise();
+  
+  return;
+}
 
 // 指定したchannelに、メッセージを送信する。
 async function postMessage(text, channel, ts) {
