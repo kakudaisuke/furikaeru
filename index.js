@@ -38,7 +38,6 @@ exports.handler = async (event) => {
   const month = eventDateTime.getMonth()+1;
   const week = eventDateTime.getDay();
   const day = eventDateTime.getDate();
-  const weekday = new Array("日","月","火","水","木","金","土");
 
   console.log("ts:", ts);
   
@@ -52,21 +51,10 @@ exports.handler = async (event) => {
 
   // メンションされたらフォーマットをスレッドで投げる
   if (text === process.env["MENTIONED_APP_USER_ID"]) {
-    const format = `${month}/${day}(${weekday[week]})
-*今日やったこと*
--  
--  
-
-*明日やること*
--  
--  
-
-*自由記入（ハマったこと、学んだことなど）*
--  
-`
+    const format = furikaeruFormat(month, day, week);
     let ddb = new AWS.DynamoDB();
     
-    let params = {
+/*    let params = {
       ExpressionAttributeValues: {
         ':s': {N: '2'},
         ':e' : {N: '09'},
@@ -87,7 +75,7 @@ exports.handler = async (event) => {
           console.log(element.Title.S + " (" + element.Subtitle.S + ")");
         });
       }
-    });
+    });*/
 
     await postMessage(format, channel, ts);
   }
@@ -116,6 +104,25 @@ const handleChallenge = (challenge) => {
 
 /*----------------------------------------------------------------------*/
 /*methods*/
+
+const furikaeruFormat = (month, day, week) => {
+  const weekday = new Array("日","月","火","水","木","金","土");
+  const format = 
+`${month}/${day}(${weekday[week]})
+*今日やったこと*
+-  
+-  
+
+*明日やること*
+-  
+-  
+
+*自由記入（ハマったこと、学んだことなど）*
+-  
+`
+  return format;
+}
+
 
 // DynamoDBに完了タスクを書き込む
 async function inputDoneTaskInDynamoDB(text, user, ts, year, month, day) {
