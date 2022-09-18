@@ -1,3 +1,6 @@
+/*----------------------------------------------------------------------*/
+/*specifications*/
+
 // "@furikaeru Aの実装"->DynamoDBに登録（user,text,date）
 // "@furikaeru"->振り返りフォーマットにやったことを入れてresponse
 // そのフォーマットを元に振り返りを埋める
@@ -7,7 +10,11 @@
 
 // 退勤したら振り返りしたかbotする
 
+/*----------------------------------------------------------------------*/
+
 const AWS = require('aws-sdk');
+
+/*----------------------------------------------------------------------*/
 
 exports.handler = async (event) => {
 /*    console.log('Received event:', JSON.stringify(event, null, 2));*/
@@ -33,16 +40,14 @@ exports.handler = async (event) => {
   const day = eventDateTime.getDate();
   const weekday = new Array("日","月","火","水","木","金","土");
 
-/*    console.log("text:", text);
-    console.log("user:", user);
-    console.log("channel:", channel);
-    console.log("botProfile:", botProfile);*/
-    console.log("ts:", ts);
-
+  console.log("ts:", ts);
+  
+  // 完了タスクの登録のDynamoDB登録処理
   const isDoneTask = text.includes(process.env["MENTIONED_APP_USER_ID"]) && text.includes(":done:");
 
   if (isDoneTask) {
     await inputDoneTaskInDynamoDB(text, user, ts, year, month, day);
+    // TODO: ここにreturn; か？inputDoneTaskInDynamoDB内か？
   }
 
   // メンションされたらフォーマットをスレッドで投げる
@@ -108,6 +113,9 @@ const handleChallenge = (challenge) => {
     return response;
   }
 }
+
+/*----------------------------------------------------------------------*/
+/*methods*/
 
 // DynamoDBに完了タスクを書き込む
 async function inputDoneTaskInDynamoDB(text, user, ts, year, month, day) {
