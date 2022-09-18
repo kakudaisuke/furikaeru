@@ -38,8 +38,6 @@ exports.handler = async (event) => {
   const month = eventDateTime.getMonth()+1;
   const week = eventDateTime.getDay();
   const day = eventDateTime.getDate();
-
-  console.log("ts:", ts);
   
   // 完了タスクの登録のDynamoDB登録処理
   const isDoneTask = text.includes(process.env["MENTIONED_APP_USER_ID"]) && text.includes(":done:");
@@ -59,7 +57,6 @@ exports.handler = async (event) => {
     const year = eventDateTime.getFullYear();
     const month = eventDateTime.getMonth()+1;
     const day = eventDateTime.getDate();
-    
     const targetDate = `${year}/${month}/${day}`
 
     const dataItems = await getDoneTaskDynamoDB(user, targetDate);
@@ -95,9 +92,6 @@ const handleChallenge = (challenge) => {
 
 const furikaeruFormat = (dataItems, month, day, week) => {
   const weekday = new Array("日","月","火","水","木","金","土");
-  
-  console.log("dataItems: ", dataItems);
-  console.log("dataItems is Array?: ", dataItems.isArray);
 
   let format;
   
@@ -143,8 +137,6 @@ async function putItemDoneTaskInDynamoDB(text, user, ts, year, month, day) {
   let ddb = new AWS.DynamoDB({apiVersion: '2012-08-10'});
 
   const task = text.replace("<@U04241MH3FG>", "").replace(":done:", "").trim();
-
-  console.log("task: ", task);
   
   let params = {
     TableName: 'furikaeru_done_tasks',
