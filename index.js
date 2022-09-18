@@ -9,24 +9,26 @@
 
 const AWS = require('aws-sdk');
 
+// handle challenge
+const handleChallenge = (challenge) => {
+  if (challenge) {
+    const body = { challenge: challenge };
+    const response = {
+      statusCode: 200,
+      body: JSON.stringify(body)
+    };
+  
+    return response;
+  }
+}
+
 exports.handler = async (event) => {
 /*    console.log('Received event:', JSON.stringify(event, null, 2));*/
 
   const eventBody = JSON.parse(event.body);
 /*    console.log("eventBody:", eventBody);*/
 
-    // handle challenge
-  const challenge = eventBody.challenge;
-  if (challenge) {
-    const body = {
-      challenge: challenge
-    };
-    const response = {
-      statusCode: 200,
-      body: JSON.stringify(body)
-    };
-    return response;
-  }
+  handleChallenge(eventBody.challenge);
 
   const text = eventBody.event.text;
   const user = eventBody.event.user;
@@ -57,7 +59,6 @@ exports.handler = async (event) => {
 -  
 `
 
-
 /*    console.log("text:", text);
     console.log("user:", user);
     console.log("channel:", channel);
@@ -67,8 +68,6 @@ exports.handler = async (event) => {
   const isDoneTask = text.includes(process.env["MENTIONED_APP_USER_ID"]) && text.includes(":done:");
 
   if (isDoneTask) {
-    /*AWS.config.update({region: 'ap-northeast-1'});*/
-    // Create DynamoDB document client
     let ddb = new AWS.DynamoDB({apiVersion: '2012-08-10'});
 
     const task = text.replace("<@U04241MH3FG>", "").replace(":done:", "").trim();
