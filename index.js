@@ -45,38 +45,24 @@ exports.handler = async (event) => {
   const isDoneTask = text.includes(process.env["MENTIONED_APP_USER_ID"]) && text.includes(":done:");
 
   if (isDoneTask) {
-    await inputDoneTaskInDynamoDB(text, user, ts, year, month, day);
+    await putItemDoneTaskInDynamoDB(text, user, ts, year, month, day);
     // TODO: ここにreturn; か？inputDoneTaskInDynamoDB内か？
   }
 
   // メンションされたらフォーマットをスレッドで投げる
   if (text === process.env["MENTIONED_APP_USER_ID"]) {
-    let ddb = new AWS.DynamoDB();
     
-    let params = {
-      ExpressionAttributeValues: {
-        ':u': { S: 'U01JA0X1JQ1' },
-        ':t': { N: '0' },
-        ':date': { S: '2022/9/18' }
-      },
-      ExpressionAttributeNames: {"#u":"user", "#d":"date"}, // user is reserved in Dynamo
-      KeyConditionExpression: "#u = :u and unixtime > :t",
-      ProjectionExpression: 'task',
-      FilterExpression: 'contains (#d, :date)',
-      TableName: 'furikaeru_done_tasks'
-    };
-    
-    let dataItems;
-    
-    await ddb.query(params, function(err, data) {
-      if (err) {
-        console.log("Error", err);
-      } else {
-        console.log("Success! data.Items: ", data.Items);
-        dataItems = data.Items;
-      }
-    }).promise();
+    let targetDateTime = new Date();
+    // JSTにする
+    targetDateTime.setHours(targetDateTime.getHours() + 9);
 
+    const year = eventDateTime.getFullYear();
+    const month = eventDateTime.getMonth()+1;
+    const day = eventDateTime.getDate();
+    
+    const targetDate = `${year}/${month}/${day}`
+
+    const dataItems = await getDoneTaskDynamoDB(user, targetDate);
     const format = furikaeruFormat(dataItems, month, day, week);
 
     await postMessage(format, channel, ts);
@@ -148,14 +134,12 @@ ${doneTaskList}
 -  
 `
   }
-  
 
   return format;
 }
 
-
 // DynamoDBに完了タスクを書き込む
-async function inputDoneTaskInDynamoDB(text, user, ts, year, month, day) {
+async function putItemDoneTaskInDynamoDB(text, user, ts, year, month, day) {
   let ddb = new AWS.DynamoDB({apiVersion: '2012-08-10'});
 
   const task = text.replace("<@U04241MH3FG>", "").replace(":done:", "").trim();
@@ -181,6 +165,37 @@ async function inputDoneTaskInDynamoDB(text, user, ts, year, month, day) {
   }).promise();
   
   return;
+}
+
+// DynamoDBから完了タスクを取得する
+async function getDoneTaskDynamoDB(user, targetDate) {
+  let ddb = new AWS.DynamoDB();
+  
+  let params = {
+    ExpressionAttributeValues: {
+      ':u': { S: user },
+      ':t': { N: '0' },
+      ':date': { S: targetDate }
+    },
+    ExpressionAttributeNames: {"#u":"user", "#d":"date"}, // user & date is reserved in Dynamo
+    KeyConditionExpression: "#u = :u and unixtime > :t",
+    ProjectionExpression: 'task',
+    FilterExpression: 'contains (#d, :date)',
+    TableName: 'furikaeru_done_tasks'
+  };
+  
+  let dataItems;
+  
+  await ddb.query(params, function(err, data) {
+    if (err) {
+      console.log("Error", err);
+    } else {
+      console.log("Success! data.Items: ", data.Items);
+      dataItems = data.Items;
+    }
+  }).promise();
+  
+  return dataItems;
 }
 
 // 指定したchannelに、メッセージを送信する。
