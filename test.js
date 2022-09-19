@@ -1,3 +1,8 @@
+const names = ["otu","tensaida","sasuga", "sugoi", "yaruyan", "emo", "gangan", "subara"];
+
+const nameIndex = Math.floor( Math.random() * names.length);
+console.log(names[nameIndex]);
+
 // let ts = 1663468804.962209;
 // console.log(ts);
 // let result = new Date(ts*1000);
@@ -17,12 +22,12 @@
 
 // console.log(text);
 
-let arr;
+// let arr;
 
-arr = [ { task: { S: '米を研ぐ' } }, { task: { S: '台風を眺める' } } ];
+// arr = [ { task: { S: '米を研ぐ' } }, { task: { S: '台風を眺める' } } ];
 
-console.log(arr);
-console.log(Array.isArray(arr));
+// console.log(arr);
+// console.log(Array.isArray(arr));
 
-let arr2 = [1, 3];
-console.log(Array.isArray(arr2));
+// let arr2 = [1, 3];
+// console.log(Array.isArray(arr2));

@@ -210,16 +210,8 @@ async function postMessage(text, channel, ts) {
 
 // 指定したtextにemojiを付ける
 async function addEmoji(text, channel, ts) {
-  console.log("Will add emoji !!");
-/*  let request = require('request');
-  
-  console.log("request:", request);*/
-  
-  let emoji = "sasuga";
-  
-  let reaction_url = `https://slack.com/api/reactions.add`;
-  
-  console.log("reaction_url:", reaction_url);
+  let emoji = selectEmoji();
+  let url = `https://slack.com/api/reactions.add`;
 
   const data = {
     'channel': channel,
@@ -233,7 +225,13 @@ async function addEmoji(text, channel, ts) {
     'Authorization': 'Bearer ' + process.env['SLACK_BOT_USER_OAUTH_TOKEN']
   };
   console.log("sendHttpRequest!!");
-  await sendHttpRequest(reaction_url, 'POST', headers, JSON.stringify(data));
+  await sendHttpRequest(url, 'POST', headers, JSON.stringify(data));
+}
+
+function selectEmoji() {
+  const names = ["otu","tensaida","sasuga", "sugoi", "yaruyan", "emo", "gangan", "subara"];
+  const nameIndex = Math.floor( Math.random() * names.length);
+  return names[nameIndex];
 }
 
 // Httpリクエストを送信する。
