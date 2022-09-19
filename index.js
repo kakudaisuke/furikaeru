@@ -1,9 +1,9 @@
 /*----------------------------------------------------------------------*/
 /*specifications*/
 
-// "@furikaeru Aの実装"->DynamoDBに登録（user,text,date）
-// "@furikaeru"->振り返りフォーマットにやったことを入れてresponse
-// そのフォーマットを元に振り返りを埋める
+// "@furikaeru ミナミ定例 :done:"->DynamoDBに登録
+// "@furikaeru"->振り返りフォーマットにやったことを入れてスレッドで返す
+// ユーザーはそのフォーマットをコピペして振り返りを埋めて投稿できる
 
 // OutlookのAPI叩いて明日の予定を取得する
 // 明日やることに埋める
@@ -17,7 +17,7 @@ const AWS = require('aws-sdk');
 /*----------------------------------------------------------------------*/
 
 exports.handler = async (event) => {
-/*    console.log('Received event:', JSON.stringify(event, null, 2));*/
+  console.log('Received event:', JSON.stringify(event, null, 2));
 
   const eventBody = JSON.parse(event.body);
   const text = eventBody.event.text;
@@ -54,10 +54,11 @@ exports.handler = async (event) => {
   // メンションされたらフォーマットをスレッドで投げる
   if (text === process.env["MENTIONED_APP_USER_ID"]) {
     
+    // フォーマットを返す日（今日）の日付をセットする
+    // TODO: 指定された日にも対応できるようにしたい
     let targetDateTime = new Date();
     // JSTにする
     targetDateTime.setHours(targetDateTime.getHours() + 9);
-
     const year = eventDateTime.getFullYear();
     const month = eventDateTime.getMonth()+1;
     const day = eventDateTime.getDate();
@@ -123,7 +124,6 @@ const furikaeruFormat = (dataItems, month, day, week) => {
 `${month}/${day}(${weekday[week]})
 *今日やったこと*
 ${doneTaskList}
-
 *明日やること*
 -  
 -  
