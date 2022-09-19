@@ -20,11 +20,12 @@ exports.handler = async (event) => {
 /*    console.log('Received event:', JSON.stringify(event, null, 2));*/
 
   const eventBody = JSON.parse(event.body);
-/*    console.log("eventBody:", eventBody);*/
+  const text = eventBody.event.text;
+  const isFurikaeruEvent = text.includes(process.env["MENTIONED_APP_USER_ID"]);
+  if (!isFurikaeruEvent) return;
 
   handleChallenge(eventBody.challenge);
 
-  const text = eventBody.event.text;
   const user = eventBody.event.user;
   const channel = eventBody.event.channel;
   const ts = eventBody.event.ts;
@@ -40,11 +41,14 @@ exports.handler = async (event) => {
   const day = eventDateTime.getDate();
   
   // 完了タスクの登録のDynamoDB登録処理
-  const isDoneTask = text.includes(process.env["MENTIONED_APP_USER_ID"]) && text.includes(":done:");
+  const isDoneTask = text.includes(":done:");
 
   if (isDoneTask) {
     await putItemDoneTaskInDynamoDB(text, user, ts, year, month, day);
     // TODO: ここにreturn; か？inputDoneTaskInDynamoDB内か？
+
+    console.log("emoji入れていく");
+    await addEmoji(text, channel, ts);
   }
 
   // メンションされたらフォーマットをスレッドで投げる
@@ -204,13 +208,42 @@ async function postMessage(text, channel, ts) {
   await sendHttpRequest(process.env['SLACK_POST_MESSAGE_URL'], 'POST', headers, JSON.stringify(data));
 }
 
+// 指定したtextにemojiを付ける
+async function addEmoji(text, channel, ts) {
+  console.log("Will add emoji !!");
+/*  let request = require('request');
+  
+  console.log("request:", request);*/
+  
+  let emoji = "sasuga";
+  
+  let reaction_url = `https://slack.com/api/reactions.add`;
+  
+  console.log("reaction_url:", reaction_url);
+
+  const data = {
+    'channel': channel,
+    'text': text,
+    'timestamp': ts,
+    'name': emoji
+  };
+  
+  const headers = {
+    'Content-Type': 'application/json; charset=UTF-8',
+    'Authorization': 'Bearer ' + process.env['SLACK_BOT_USER_OAUTH_TOKEN']
+  };
+  console.log("sendHttpRequest!!");
+  await sendHttpRequest(reaction_url, 'POST', headers, JSON.stringify(data));
+}
+
 // Httpリクエストを送信する。
 async function sendHttpRequest(url, method, headers, bodyData) {
-/*  console.log('sendHttpRequest');
+  console.log('sendHttpRequest');
   console.log('url:' + url);
   console.log('method:' + method);
   console.log('headers:' + JSON.stringify(headers));
-  console.log('body:' + bodyData);*/
+  console.log('body:' + bodyData);
+
   const https = require('https');
   const options = {
     method: method,
@@ -218,20 +251,21 @@ async function sendHttpRequest(url, method, headers, bodyData) {
   };
   return new Promise((resolve, reject) => {
     let req = https.request(url, options, (res) => {
-/*      console.log('responseStatusCode:' + res.statusCode);
-      console.log('responseHeaders:' + JSON.stringify(res.headers));*/
+      console.log('responseStatusCode:' + res.statusCode);
+      console.log('responseHeaders:' + JSON.stringify(res.headers));
+
       res.setEncoding('utf8');
       let body = '';
       res.on('data', (chunk) => {
         body += chunk;
-/*        console.log('responseBody:' + chunk);*/
+        console.log('responseBody:' + chunk);
       });
       res.on('end', () => {
-/*        console.log('No more data in response.');*/
+        console.log('No more data in response.');
         resolve(body);
       });
     }).on('error', (e) => {
-/*      console.log('problem with request:' + e.message);*/
+      console.log('problem with request:' + e.message);
       reject(e);
     });
     req.write(bodyData);
